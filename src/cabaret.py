@@ -11,13 +11,38 @@ from forward import forward
 import rebuilding_setup as setup
 import reading_input as input_data
 import time
+from lhts import LHTSSolver, LHTSInitializer
 
 start_time = time.time()
 
 input_dict = input_data.reading_input()
 mix = setup.setup_mpp()
 
-if input_dict["inverse"] == 'True':
+if input_dict["lhts"] == 'True':
+    lhts_beta = input_dict["lhts_beta"]
+    lhts_h = input_dict["simulated_measurements"]["Total_enthalpy"]
+    lhts_p = input_dict["simulated_measurements"]["Stagnation_pressure"]
+    fixed_Mach = input_dict["freestream"]["Mach"]
+
+    T_w = input_dict["surface_temperature"]
+    pr = input_dict["Prandtl"]
+    L = input_dict["Lewis"]
+    resmin = input_dict["residual"]
+
+    gamma_air = 1.4
+    Cp_air = 1005
+    init_solver = LHTSInitializer(gamma_air,Cp_air,fixed_Mach,lhts_p,lhts_h)
+    p_2 = init_solver.getPostShockStaticPressure()
+    T_2 = init_solver.getPostShockStaticTemperature()
+    u_2 = init_solver.getPostShockVelocity()
+    p_inf = init_solver.getFreeStreamPressure()
+    T_inf = init_solver.getFreeStreamTemperature()
+    T_stag = init_solver.totalTemperature()
+
+    solver = LHTSSolver(lhts_beta, lhts_h, lhts_p, fixed_Mach, [p_inf,T_inf], [p_2,T_2,u_2], [T_stag], mix, input_dict["options"],input_dict["print_info"], T_w,pr,L,resmin, 0.0)
+
+
+elif input_dict["inverse"] == 'True':
     output = inverse(input_dict["measurements"],input_dict,mix)
     end_time=time.time()
     total_time = end_time-start_time

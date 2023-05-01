@@ -38,7 +38,10 @@ def reading_input():
                                     "total":    {"pressure": float(lines[171].strip()), 
                                                  "temperature": float(lines[167].strip()),
                                                  "robust": lines[175].strip()}
-                        }
+                        },
+                        "lhts": lines[182].strip(),
+                        "lhts_beta": float(lines[186].strip())
+
 
     }
 

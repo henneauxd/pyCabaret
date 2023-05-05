@@ -5,6 +5,7 @@ import rebuilding_setup as setup
 from reservoir import reservoir
 from forward import forward
 import math as math
+import numpy as np
 
 
 class LHTSInitializer:
@@ -97,7 +98,7 @@ class LHTSSolver:
         self.resmin = resmin
         self.T_stag = T_stag
             
-    def prepost_shock_system(self,vars,resini,robust_choice):
+    def prepost_shock_system(self,vars,method_choice):
         p_2 = vars[0]
         T_2 = vars[1]
         u_2 = vars[2]
@@ -130,27 +131,40 @@ class LHTSSolver:
         eqs[3] = self.lhts_h - h_2 - 0.5*u_2**2
         eqs[4] = s_e - s_2
 
-        return eqs
+        # print("-> eqs[0] = %2.16f"%eqs[0])
+        # print("-> eqs[1] = %2.16f"%eqs[1])
+        # print("-> eqs[2] = %2.16f"%eqs[2])
+        # print("-> eqs[3] = %2.16f"%eqs[3])
+        # print("-> eqs[4] = %2.16f"%eqs[4])
+        # print("")
+
+        if method_choice == "Root":
+            res_norm = [np.linalg.norm(eqs[i]) for i in range(5)]
+        else:
+            res_norm = np.linalg.norm(eqs)
+
+        return res_norm
     
     def solve_prepost_shock_system(self,toler):
-        opt = self.options["total"]
-        resini = self.prepost_shock_system(self.ic,resini,opt["robust"])
+        opt = self.options["options"]["total"]
         ic_list = [self.ic_post,self.ic_freestream]
         ic = [item for sublist in ic_list for item in sublist] 
+        # resini = self.prepost_shock_system(ic,0.0,opt["robust"])
 
         bnds = ((1.0, None), (1.0, None)) 
-        options={'maxiter': None}
-        if opt["robust"] == "Yes":
-            result = scipy.optimize.minimize(self.prepost_shock_system,ic,args=(resini,opt["robust"]),method='Powell',tol=toler,options=options)
+        options={'maxiter': self.options["maxiter"]}
 
-            if result.success == False:
-                print("Warning: convergence not guaranteed for robust solve_prepost_shock_system")
-
+        if self.options["method"] == "Root":
+            result = scipy.optimize.root(self.prepost_shock_system,ic,args=(self.options["method"]),method='broyden2',tol=self.options["residual"],options=options)
+        elif self.options["method"] == "Hybrid":
+            result = scipy.optimize.minimize(self.prepost_shock_system,ic,args=(self.options["method"]),method="L-BFGS-B",tol=1.0e-03,options=options)
+            ic = result.x
+            result = scipy.optimize.root(self.prepost_shock_system,ic,args=(self.options["method"]),tol=self.options["residual"])
         else:
-            result = scipy.optimize.root(self.prepost_shock_system,ic,args=(resini,opt["robust"]),tol=toler)
+            result = scipy.optimize.minimize(self.prepost_shock_system,ic,args=(self.options["method"]),method=self.options["method"],tol=self.options["residual"],options=options)
 
-            if result.success == False:
-                print("Warning: convergence not guaranteed for normal solve_prepost_shock_system")
+        print(result.message)
+        print("Residual value = ", result.fun)
 
         p_inf = result.x[3]
         T_inf = result.x[4]
@@ -164,7 +178,7 @@ class LHTSSolver:
         h_inf = self.mixs["free_stream"].mixtureHMass() + (0.5*u_inf**2)
         s_inf = self.mixs["free_stream"].mixtureSMass()
 
-        T_0,p_0,v_0 = reservoir(T_inf,p_inf,h_inf,s_inf,toler,self.mixs["reservoir"],"reservoir",self.options["reservoir"])
+        T_0,p_0,v_0 = reservoir(T_inf,p_inf,h_inf,s_inf,toler,self.mixs["reservoir"],"reservoir",self.options["options"]["reservoir"])
         return T_0,p_0
     
     def temp_stagnation_system(self,T_e):
@@ -173,22 +187,30 @@ class LHTSSolver:
         eq = [0.0] * 1
         eq[0] = self.lhts_h - self.mixs["total"].mixtureHMass()
 
+        # print("-> p_e = %2.16f"%p_e)
+        # print("-> T_e = %2.16f"%T_e)
+        # print("-> H_e = %2.16f"%self.lhts_h)
+        # print("-> H_e_mpp = %2.16f"%self.mixs["total"].mixtureHMass())
+        # print("-> eq[0] = %2.16f"%eq[0])
+        # print("")
+
+
         return eq
     
     def solve_temp_stagnation_system(self,toler):
-        opt = self.options["total"]
-        options={'maxiter': None}
+        opt = self.options["options"]["total"]
+        options={'maxiter': self.options["maxiter"]}
         if opt["robust"] == "Yes":
-            result = scipy.optimize.minimize(self.temp_stagnation_system,self.ic_temp_stag,method='Powell',tol=toler,options=options)
+            result = scipy.optimize.minimize(self.temp_stagnation_system,self.ic_temp_stag,method='Nelder-Mead',tol=toler,options=options)
 
             if result.success == False:
                 print("Warning: convergence not guaranteed for robust solve_temp_stagnation_system")
 
         else:
-            result = scipy.optimize.root(self.temp_stagnation_system,self.ic_temp_stag,tol=toler)
+            result = scipy.optimize.root(self.temp_stagnation_system,self.ic_temp_stag,tol=toler,options=options)
 
-            if result.success == False:
-                print("Warning: convergence not guaranteed for normal solve_temp_stagnation_system")
+        if result.success == False:
+            print("Warning: convergence not guaranteed for normal solve_temp_stagnation_system")
 
         T_e = result.x[0]
         return T_e
@@ -204,16 +226,15 @@ class LHTSSolver:
         print("-> P_stag = %2.16f"%self.lhts_p)
         print("-> H_stag = %2.16f"%self.lhts_h)
         print("-> Mach infty = %2.6f"%self.fixed_Mach)
+        print("Initial guess:")
+        print("-> p_inf = %2.16f"%self.ic_freestream[0])
+        print("-> T_inf = %2.16f"%self.ic_freestream[1])
+        print("-> p_2 = %2.16f"%self.ic_post[0])
+        print("-> T_2 = %2.16f"%self.ic_post[1])
+        print("-> u_2 = %2.16f"%self.ic_post[2])
+        print("-> T_stag = %2.16f"%self.ic_temp_stag[0])
         print("")
 
-        print("*** Solving for pre- and post-shock conditions ***")
-        tol_prepost = 1.0E-8
-        T_inf,p_inf,u_inf = self.solve_prepost_shock_system(tol_prepost)
-
-        print("*** Solving for reservoir conditions ***")
-        tol_res = 1.0E-8
-        T_0,p_0 = self.solve_reservoir_system(T_inf,p_inf,u_inf,tol_res)
-        
         print("*** Finding stagnation temperature ***")
         if self.T_stag != 0.0:
             T_e = self.T_stag
@@ -224,9 +245,22 @@ class LHTSSolver:
         self.mixs["total"].equilibrate(p_e,T_e)
         rho_e = self.mixs["total"].density()
 
-        r_eff = self.get_effective_radius(rho_e,p_inf)
+        print("*** Solving for pre- and post-shock conditions ***")
+        tol_prepost = 1.0E-8
+        T_inf,p_inf,u_inf = self.solve_prepost_shock_system(tol_prepost)
+
+        print("*** Solving for reservoir conditions ***")
+        tol_res = 1.0E-8
+        T_0,p_0 = self.solve_reservoir_system(T_inf,p_inf,u_inf,tol_res)
+        
+
+        r_eff = 0.0#self.get_effective_radius(rho_e,p_inf)
 
         print("")
+        print("--- Computed freestream conditions ---")
+        print("-> p_inf = %2.16f"%p_inf)
+        print("-> T_inf = %2.16f"%T_inf)
+        print("-> u_inf = %2.16f"%u_inf)
         print("--- Computed reservoir conditions ---")
         print("-> p_0 = %2.16f"%p_0)
         print("-> T_0 = %2.16f"%T_0)
@@ -236,7 +270,7 @@ class LHTSSolver:
         preshock_state = [T_inf,p_inf,self.fixed_Mach]
         A_t = 0.0 # only used for mass flow
 
-        measurements = forward(preshock_state,self.resmin,A_t,r_eff,self.T_w,self.pr,self.L,self.mixs,self.print_info,self.options)
+        measurements = forward(preshock_state,self.resmin,A_t,r_eff,self.T_w,self.pr,self.L,self.mixs,self.print_info,self.options["options"])
         print("")
         print("--- Check with the Cabaret forward mode ---")
         print("-> P_stag = %2.16f"%measurements["Stagnation_pressure"])

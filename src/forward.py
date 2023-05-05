@@ -82,6 +82,7 @@ def forward(preshock_state,resmin,A_t,reff,T_w,pr,L,mix,print_info,options):
                     "Heat_flux": qw, 
                     "Stagnation_density": rhot2,
                     "Stagnation_pressure": pt2,
+                    "Stagnation_temperature": Tt2,
                     "Free_stream_density": rho_1,
                     "Free_stream_velocity": v_1,
                     "Free_stream_pressure": p_1

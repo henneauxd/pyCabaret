@@ -39,8 +39,8 @@ if input_dict["lhts"] == 'True':
     T_inf = init_solver.getFreeStreamTemperature()
     T_stag = init_solver.totalTemperature()
 
-    solver = LHTSSolver(lhts_beta, lhts_h, lhts_p, fixed_Mach, [p_inf,T_inf], [p_2,T_2,u_2], [T_stag], mix, input_dict["options"],input_dict["print_info"], T_w,pr,L,resmin, 0.0)
-
+    solver = LHTSSolver(lhts_beta, lhts_h, lhts_p, fixed_Mach, [p_inf,T_inf], [p_2,T_2,u_2], [T_stag], mix, input_dict,input_dict["print_info"], T_w,pr,L,resmin, 0.0)
+    solver.solve_all()
 
 elif input_dict["inverse"] == 'True':
     output = inverse(input_dict["measurements"],input_dict,mix)
@@ -92,6 +92,7 @@ else:
     print('Reservoir temperature [K]'+"{:>22.4f}".format(output["Reservoir_temperature"]))
     print('Total enthalpy [J/kg]'+"{:>26.4f}".format(output["Total_enthalpy"]))
     print('Stagnation density [kg/m^3]'+"{:>20.4f}".format(output["Stagnation_density"]))
+    print('Stagnation temperature [K]'+"{:>16.4f}".format(output["Stagnation_temperature"]))
     print('Free stream density [kg/m^3]'+"{:>19.4f}".format(output["Free_stream_density"]))
     print('Mass flow [kg/s]'+"{:>31.4f}".format(output["Mass_flow"]))
     print('Free stream velocity [m/s]'+"{:>21.4f}".format(output["Free_stream_velocity"]))

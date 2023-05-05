@@ -56,7 +56,10 @@ def forward(preshock_state,resmin,A_t,reff,T_w,pr,L,mix,print_info,options):
     s_1 = setup.mixture_states(mix)["free_stream"].mixtureSMass()
 
     # Reservoir computation
-    T0,p0,v0 = reservoir(T_1,p_1,h_1,s_1,resmin,mix,"reservoir",options["reservoir"])
+    # !!! TO BE DECOMMENTED IF WE WANT TO COMPUTE RESERVOIR CONDITIONS !!!
+    # T0,p0,v0 = reservoir(T_1,p_1,h_1,s_1,resmin,mix,"reservoir",options["reservoir"])
+    T0 = -1.0
+    p0 = -1.0
 
     # Mass flow computation
     mf = massflow(T_1,p_1,h_1,s_1,A_t,resmin,mix,"throat",options["massflow"])

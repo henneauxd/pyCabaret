@@ -57,9 +57,9 @@ def forward(preshock_state,resmin,A_t,reff,T_w,pr,L,mix,print_info,options):
 
     # Reservoir computation
     # !!! TO BE DECOMMENTED IF WE WANT TO COMPUTE RESERVOIR CONDITIONS !!!
-    # T0,p0,v0 = reservoir(T_1,p_1,h_1,s_1,resmin,mix,"reservoir",options["reservoir"])
-    T0 = -1.0
-    p0 = -1.0
+    T0,p0,v0 = reservoir(T_1,p_1,h_1,s_1,resmin,mix,"reservoir",options["reservoir"])
+    # T0 = -1.0
+    # p0 = -1.0
 
     # Mass flow computation
     mf = massflow(T_1,p_1,h_1,s_1,A_t,resmin,mix,"throat",options["massflow"])
@@ -88,7 +88,10 @@ def forward(preshock_state,resmin,A_t,reff,T_w,pr,L,mix,print_info,options):
                     "Stagnation_temperature": Tt2,
                     "Free_stream_density": rho_1,
                     "Free_stream_velocity": v_1,
-                    "Free_stream_pressure": p_1
+                    "Free_stream_pressure": p_1,
+                    "Post_shock_velocity": v_2,
+                    "Post_shock_pressure": p_2,
+                    "Post_shock_temperature": T_2,
 
     }
 

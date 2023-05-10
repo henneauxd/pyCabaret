@@ -70,10 +70,11 @@ class enthalpy_entropy_solver:
         real = [var[0]*T,var[1]*p]
 
         setup.mixture_states(self.mix)[self.state].equilibrate(real[0],real[1])
+        vel = 0.0
         if self.v0 !=0.:
-            self.v0 = setup.mixture_states(self.mix)[self.state].equilibriumSoundSpeed()
+            vel = setup.mixture_states(self.mix)[self.state].equilibriumSoundSpeed() * self.v0
         
-        h_0 = setup.mixture_states(self.mix)[self.state].mixtureHMass() + (0.5*(self.v0**2))
+        h_0 = setup.mixture_states(self.mix)[self.state].mixtureHMass() + (0.5*(vel**2))
         s_0 = setup.mixture_states(self.mix)[self.state].mixtureSMass()
 
         residual = [(h_0-self.h)/self.h, (s_0-self.s)/self.s]
@@ -146,8 +147,9 @@ class enthalpy_entropy_solver:
             if result.success == False:
                 print("Warning: convergence not guaranteed for"+' '+self.name)
 
+        vel = 0.0
         if self.v0 !=0.:
             setup.mixture_states(self.mix)[self.state].equilibrate(result.x[0]*T,result.x[1]*p)
-            self.v0 = setup.mixture_states(self.mix)[self.state].equilibriumSoundSpeed()
+            vel = setup.mixture_states(self.mix)[self.state].equilibriumSoundSpeed() * self.v0
 
-        return result.x[0]*T,result.x[1]*p,self.v0
+        return result.x[0]*T,result.x[1]*p,vel
